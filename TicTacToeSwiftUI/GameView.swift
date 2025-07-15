@@ -8,77 +8,88 @@
 import SwiftUI
 
 struct GameView: View {
-    
-    @StateObject private var gameManager = GameViewModel()
-    
+    @StateObject private var vm = GameViewModel()
+    @State private var showingSettings = false
+
     var body: some View {
-        
-        GeometryReader { geometry in
-            VStack {
-                Spacer()
-                LazyVGrid(columns: gameManager.columns, spacing: 10) {
-                    ForEach(0..<9) { index in
-                        ZStack {
-                            //game UI
-                            GameSquareView(proxy: geometry)
-                            
-                            PlayerIndicator(sytsemImageName: gameManager.moves[index]?.indicator ?? "")
-                        }
-                        .onTapGesture {
-                            gameManager.processPlayerMove(at: index)
-                        }
+        NavigationStack {
+            VStack(spacing: 20) {
+                // Scoreboard
+                HStack(spacing: 40) {
+                    VStack {
+                        Text("X")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                        Text("\(vm.scores.x)")
+                            .font(.title)
+                            .bold()
+                    }
+                    VStack {
+                        Text("Draw")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        Text("\(vm.scores.draw)")
+                            .font(.title)
+                            .bold()
+                    }
+                    VStack {
+                        Text("O")
+                            .font(.headline)
+                            .foregroundColor(.blue)
+                        Text("\(vm.scores.o)")
+                            .font(.title)
+                            .bold()
                     }
                 }
-                .background(Color.black)
+
+                // Turn indicator or winner/draw message
+                if let winner = vm.winner {
+                    Text("\(winner == .x ? "X" : "O") Wins! 🎉")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(winner == .x ? .red : .blue)
+                } else if vm.isDraw {
+                    Text("It's a Draw!")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.gray)
+                } else {
+                    Text("Turn: \(vm.turn == .x ? "X" : "O")")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(vm.turn == .x ? .red : .blue)
+                }
+
+                // Game board
+                TicTacToeBoardView(vm: vm)
+                    .frame(maxWidth: 400, maxHeight: 400)
+
+                // Reset button
+                Button("Reset Game") {
+                    vm.resetBoard()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+
                 Spacer()
             }
             .padding()
-            .disabled(gameManager.isBoardDisabled)
-            .alert(item: $gameManager.alertItem) { alertItem in
-                Alert(title: alertItem.title, message: alertItem.message, dismissButton: .default(alertItem.buttonTitle, action: {
-                    gameManager.resetBoard()
-                }))
+            .navigationTitle("Tic Tac Toe")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(showSheet: $showingSettings, vm: vm)
             }
         }
     }
 }
-
-enum Player {
-    case human
-    case computer
-}
-
-struct Move {
-    let player: Player
-    let boardIndex: Int
-    
-    var indicator : String {
-        return player == .human ? "xmark" : "circle"
-    }
-}
-
 #Preview {
     GameView()
-}
-
-struct GameSquareView: View {
-    
-    var proxy: GeometryProxy
-    
-    var body: some View {
-        let size = (min(proxy.size.width, proxy.size.height) / 3) - 15
-        Rectangle()
-            .foregroundColor(.white)
-            .frame(width: size, height: size)
-    }
-}
-
-struct PlayerIndicator: View {
-    var sytsemImageName: String
-    var body: some View {
-        Image(systemName: sytsemImageName)
-            .resizable()
-            .frame(width: 40, height: 40)
-            .foregroundColor(.blue)
-    }
 }
